@@ -5,6 +5,20 @@ CoordMode "Pixel", "Screen"
 
 WinTitle := "Schedule Plus"
 
+ShowWorking() {
+    global WorkingGui
+    WorkingGui := Gui("+AlwaysOnTop -Caption +ToolWindow", "Schedule Plus Automation")
+    WorkingGui.SetFont("s12 Bold")
+    WorkingGui.AddText("w260 h10 r4 Center", "Auto Sript")
+    WorkingGui.AddText("w260 r4 Center", "Starting...")
+    WorkingGui.Show("AutoSize Center")
+}
+
+HideWorking() {
+    global WorkingGui
+    try WorkingGui.Destroy()
+}
+
 CFG := Map(
     "modes", Map(
         "LIGHT", Map(
@@ -34,7 +48,8 @@ CFG := Map(
     ),
     "lights", Map(
         "L001", [720, 454],
-        "L002", [720, 500]
+        "L002", [720, 500],
+        "R001", [793, 397]
     )
 )
 
@@ -127,7 +142,7 @@ GetLightState(lightKey) {
         return "ON"
     if IsRed(rgb)
         return "OFF"
-    return "UNKNOWN" ; เผื่อสีไม่ชัด/ตำแหน่งพลาด
+    return "UNKNOWN"
 }
 SafeClick(x, y) {
     DllCall("SetCursorPos", "int", x, "int", y)
@@ -163,37 +178,101 @@ SetLight(lightKey, desired) {
     Sleep 800
     if !WaitState(lightKey, desired, 2500)
     ; throw Error("p: " p[1] p[2])
-    throw Error("Clicked but state didn't change: " lightKey)
+        throw Error("Clicked but state didn't change: " lightKey)
 
 }
 
-; -------------------------
-;  INPUT: จาก Node "F1|Z2|L001|ON"
-arg := A_Args.Length ? A_Args[1] : "F1|Z2|L002|LIGHT|On"
-parts := StrSplit(arg, "|")
-if (parts.Length != 5) {
-    MsgBox "Bad args. Use: F#|Z#|Device|LIGHT/AIR|ON/OFF"
-    ExitApp 2
-}
+; arg := A_Args.Length ? A_Args[1] : "F1|Z2|L002|LIGHT|ON;F1|Z2|R001|LIGHT|ON"
 
-floorKey := parts[1]
-zoneKey := parts[2]
-devKey := parts[3]
-modeKey := StrUpper(parts[4])     ; LIGHT หรือ AIR
-desired := StrUpper(parts[5])     ; ON/OFF
+; cmds := StrSplit(arg, ";")
+
+; for , cmd in cmds {
+;     cmd := Trim(cmd)
+;     if (cmd = "")
+;         continue
+
+;     parts := StrSplit(cmd, "|")
+;     if (parts.Length != 5) {
+;         MsgBox "Bad cmd: " cmd "`nUse: F#|Z#|Device|LIGHT/AIR|ON/OFF"
+;         ExitApp 2
+;     }
+
+;     floorKey := parts[1]
+;     zoneKey  := parts[2]
+;     devKey   := parts[3]
+;     modeKey  := StrUpper(parts[4])
+;     desired  := StrUpper(parts[5])
+
+;     EnsureWindow()
+;     EnsureFloor(floorKey)
+;     EnsureZone(zoneKey)
+;     EnsureMode(modeKey)
+
+;     before := GetLightState(devKey)
+;     after := SetLight(devKey, desired)
+
+;     ; TrayTip "Schedule Plus", "DONE " floorKey "|" zoneKey "|" devKey "|" modeKey "|" desired, 2
+;     ; Sleep 300
+; }
+
+; ExitApp 0
 
 try {
+    ShowWorking()
+    arg := A_Args.Length ? A_Args[1] : "F1|Z2|L002|LIGHT|ON;F1|Z2|R001|LIGHT|ON"
+    cmds := StrSplit(arg, ";")
     EnsureWindow()
-    EnsureFloor(floorKey)
-    EnsureZone(zoneKey)
-    EnsureMode(modeKey)
 
-    before := GetLightState(devKey)
-    after := SetLight(devKey, desired)
+    lastFloor := ""
+    lastZone := ""
+    lastMode := ""
 
-    TrayTip "Schedule Plus", "SUCCESS " floorKey " | " zoneKey " | " modeKey "`n" devKey ": " before " → " after, 3
+    for , cmd in cmds {
+        cmd := Trim(cmd)
+        if (cmd = "")
+            continue
+
+        parts := StrSplit(cmd, "|")
+        if (parts.Length != 5) {
+            MsgBox "Bad cmd: " cmd "`nUse: F#|Z#|Device|LIGHT/AIR|ON/OFF"
+            ExitApp 2
+        }
+
+        floorKey := parts[1]
+        zoneKey := parts[2]
+        devKey := parts[3]
+        modeKey := StrUpper(parts[4])
+        desired := StrUpper(parts[5])
+
+        if (floorKey != lastFloor) {
+            EnsureFloor(floorKey)
+            lastFloor := floorKey
+            lastZone := ""
+            lastMode := ""
+            Sleep 150
+        }
+
+        if (zoneKey != lastZone) {
+            EnsureZone(zoneKey)
+            lastZone := zoneKey
+            lastMode := ""
+            Sleep 150
+        }
+
+        if (modeKey != lastMode) {
+            EnsureMode(modeKey)
+            lastMode := modeKey
+            Sleep 150
+        }
+
+        before := GetLightState(devKey)
+        SetLight(devKey, desired)
+        after := GetLightState(devKey)
+    }
+    HideWorking()
     ExitApp 0
 } catch as e {
+    HideWorking()
     MsgBox e.Message
     ExitApp 1
 }
