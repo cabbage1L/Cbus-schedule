@@ -1,5 +1,8 @@
 ﻿#Requires AutoHotkey v2.0
 #SingleInstance Force
+
+#Include config.ahk
+
 CoordMode "Mouse", "Screen"
 CoordMode "Pixel", "Screen"
 
@@ -18,40 +21,6 @@ HideWorking() {
     global WorkingGui
     try WorkingGui.Destroy()
 }
-
-CFG := Map(
-    "modes", Map(
-        "LIGHT", Map(
-            "select", [601, 114],
-            "activeCheck", [29, 157]
-        ),
-        "AIR", Map(
-            "select", [601, 114],
-            "activeCheck", [29, 157]
-        )
-    ),
-    "floors", Map(
-        "F1", Map(
-            "select", [100, 860],
-            "activeCheck", [30, 860]
-        )
-    ),
-    "zones", Map(
-        "Z2", Map(
-            "select", [440, 110],
-            "activeCheck", [440, 106]
-        ),
-        "Z1", Map(
-            "select", [285, 104],
-            "activeCheck", [285, 104]
-        )
-    ),
-    "lights", Map(
-        "L001", [720, 454],
-        "L002", [720, 500],
-        "R001", [793, 397]
-    )
-)
 
 GetRGB(x, y) {
     c := PixelGetColor(x, y, "RGB")
@@ -133,7 +102,8 @@ EnsureMode(modeKey) {
         throw Error("Mode not switched: " modeKey " (still not white)")
 }
 
-Sleep 250
+; Sleep 250
+
 GetLightState(lightKey) {
     global CFG
     p := CFG["lights"][lightKey]
@@ -144,6 +114,7 @@ GetLightState(lightKey) {
         return "OFF"
     return "UNKNOWN"
 }
+
 SafeClick(x, y) {
     DllCall("SetCursorPos", "int", x, "int", y)
     Sleep 30
